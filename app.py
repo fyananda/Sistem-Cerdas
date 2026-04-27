@@ -1,68 +1,161 @@
 import streamlit as st
 
-st.title("💻 Sistem Rekomendasi Laptop")
-st.write("Sistem Cerdas Berbasis Rule (IF–THEN)")
+# -------------------------
+# DATA SEMENTARA (tanpa database)
+# -------------------------
+if "users" not in st.session_state:
+    st.session_state.users = {"admin": "123"}
 
-# =========================
-# FAKTA (INPUT USER)
-# =========================
+if "login" not in st.session_state:
+    st.session_state.login = False
 
-budget = st.selectbox(
-    "Pilih Budget:",
-    ["< 5 juta", "5 - 10 juta", "> 10 juta"]
-)
+if "data_nilai" not in st.session_state:
+    st.session_state.data_nilai = []
 
-kebutuhan = st.selectbox(
-    "Kebutuhan Utama:",
-    ["Office", "Desain Grafis", "Gaming"]
-)
+# -------------------------
+# FUNGSI LOGIN
+# -------------------------
+def login():
+    st.title("🔐 Login Sistem")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-portabilitas = st.selectbox(
-    "Apakah butuh laptop ringan?",
-    ["Ya", "Tidak"]
-)
+    if st.button("Login"):
+        if username in st.session_state.users and st.session_state.users[username] == password:
+            st.session_state.login = True
+            st.success("Login berhasil!")
+        else:
+            st.error("Username atau password salah!")
 
-baterai = st.selectbox(
-    "Kebutuhan daya tahan baterai:",
-    ["Tinggi", "Normal"]
-)
+# -------------------------
+# LOGIKA NILAI (RULE-BASED)
+# -------------------------
+def hitung_nilai(tugas, uts, uas):
+    nilai_akhir = (0.3 * tugas) + (0.3 * uts) + (0.4 * uas)
 
-multitasking = st.selectbox(
-    "Kebutuhan multitasking:",
-    ["Ringan", "Berat"]
-)
+    if nilai_akhir >= 85:
+        grade = "A"
+        ket = "Lulus (Sangat Baik)"
+    elif nilai_akhir >= 70:
+        grade = "B"
+        ket = "Lulus (Baik)"
+    elif nilai_akhir >= 60:
+        grade = "C"
+        ket = "Lulus (Cukup)"
+    elif nilai_akhir >= 50:
+        grade = "D"
+        ket = "Tidak Lulus"
+    else:
+        grade = "E"
+        ket = "Tidak Lulus"
 
-# =========================
-# PROSES (RULE IF-THEN)
-# =========================
+    return nilai_akhir, grade, ket
 
-if st.button("Dapatkan Rekomendasi"):
+# -------------------------
+# MENU UTAMA (SETELAH LOGIN)
+# -------------------------
+def main_app():
+    st.title("📊 Sistem Penilaian Mahasiswa")
 
-    rekomendasi = "Tidak ditemukan rekomendasi yang sesuai"
+    menu = st.sidebar.selectbox("Menu", ["Tambah Data", "Lihat Data", "Edit Data", "Hapus Data", "Logout"])
 
-    # RULE 1
-    if budget == "< 5 juta" and kebutuhan == "Office":
-        rekomendasi = "Laptop Entry Level (Celeron / Ryzen 3, RAM 4GB)"
+    # -------------------------
+    # CREATE
+    # -------------------------
+    if menu == "Tambah Data":
+        st.subheader("➕ Input Nilai Mahasiswa")
 
-    # RULE 2
-    elif budget == "5 - 10 juta" and kebutuhan == "Office" and multitasking == "Berat":
-        rekomendasi = "Laptop Core i5 / Ryzen 5, RAM 8GB"
+        nama = st.text_input("Nama Mahasiswa")
+        tugas = st.number_input("Nilai Tugas", 0, 100)
+        uts = st.number_input("Nilai UTS", 0, 100)
+        uas = st.number_input("Nilai UAS", 0, 100)
 
-    # RULE 3
-    elif budget == "> 10 juta" and kebutuhan == "Gaming":
-        rekomendasi = "Laptop Gaming (Core i7 + GPU RTX)"
+        if st.button("Simpan"):
+            nilai_akhir, grade, ket = hitung_nilai(tugas, uts, uas)
 
-    # RULE 4
-    elif kebutuhan == "Desain Grafis" and multitasking == "Berat":
-        rekomendasi = "Laptop Creator (RAM 16GB + GPU Dedicated)"
+            data = {
+                "nama": nama,
+                "tugas": tugas,
+                "uts": uts,
+                "uas": uas,
+                "akhir": nilai_akhir,
+                "grade": grade,
+                "keterangan": ket
+            }
 
-    # RULE 5
-    elif portabilitas == "Ya" and baterai == "Tinggi":
-        rekomendasi = "Laptop Ultrabook (Tipis, ringan, baterai awet)"
+            st.session_state.data_nilai.append(data)
+            st.success("Data berhasil ditambahkan!")
 
-    # RULE 6 (tambahan biar lebih kuat)
-    elif budget == "> 10 juta" and kebutuhan == "Office":
-        rekomendasi = "Laptop Premium (MacBook / Ultrabook High-End)"
+    # -------------------------
+    # READ
+    # -------------------------
+    elif menu == "Lihat Data":
+        st.subheader("📋 Data Mahasiswa")
 
-    # OUTPUT
-    st.success(f"💡 Rekomendasi: {rekomendasi}")
+        if st.session_state.data_nilai:
+            st.table(st.session_state.data_nilai)
+        else:
+            st.info("Belum ada data")
+
+    # -------------------------
+    # UPDATE
+    # -------------------------
+    elif menu == "Edit Data":
+        st.subheader("✏️ Edit Data")
+
+        if st.session_state.data_nilai:
+            index = st.selectbox("Pilih Data", range(len(st.session_state.data_nilai)))
+
+            data = st.session_state.data_nilai[index]
+
+            nama = st.text_input("Nama", data["nama"])
+            tugas = st.number_input("Tugas", 0, 100, data["tugas"])
+            uts = st.number_input("UTS", 0, 100, data["uts"])
+            uas = st.number_input("UAS", 0, 100, data["uas"])
+
+            if st.button("Update"):
+                nilai_akhir, grade, ket = hitung_nilai(tugas, uts, uas)
+
+                st.session_state.data_nilai[index] = {
+                    "nama": nama,
+                    "tugas": tugas,
+                    "uts": uts,
+                    "uas": uas,
+                    "akhir": nilai_akhir,
+                    "grade": grade,
+                    "keterangan": ket
+                }
+
+                st.success("Data berhasil diupdate!")
+        else:
+            st.info("Tidak ada data untuk diedit")
+
+    # -------------------------
+    # DELETE
+    # -------------------------
+    elif menu == "Hapus Data":
+        st.subheader("🗑️ Hapus Data")
+
+        if st.session_state.data_nilai:
+            index = st.selectbox("Pilih Data", range(len(st.session_state.data_nilai)))
+
+            if st.button("Hapus"):
+                st.session_state.data_nilai.pop(index)
+                st.success("Data berhasil dihapus!")
+        else:
+            st.info("Tidak ada data")
+
+    # -------------------------
+    # LOGOUT
+    # -------------------------
+    elif menu == "Logout":
+        st.session_state.login = False
+        st.success("Berhasil logout!")
+
+# -------------------------
+# FLOW UTAMA
+# -------------------------
+if not st.session_state.login:
+    login()
+else:
+    main_app()
